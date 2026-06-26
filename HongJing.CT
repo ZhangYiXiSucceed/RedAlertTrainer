@@ -1,0 +1,398 @@
+<?xml version="1.0" encoding="utf-8"?>
+<CheatTable CheatEngineTableVersion="46">
+  <CheatEntries>
+    <CheatEntry>
+      <ID>1</ID>
+      <Description>"金钱基地址"</Description>
+      <ShowAsSigned>0</ShowAsSigned>
+      <VariableType>4 Bytes</VariableType>
+      <Address>A35DB4</Address>
+      <Offsets>
+        <Offset>24C</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>2</ID>
+      <Description>"不消化金钱"</Description>
+      <VariableType>Auto Assembler Script</VariableType>
+      <AssemblerScript>[ENABLE]
+//code from here to '[DISABLE]' will be used to enable the cheat
+alloc(newmem,2048)
+label(returnhere)
+label(originalcode)
+label(exit)
+
+newmem: //this is allocated memory, you have read,write,execute access
+//place your code here
+
+originalcode:
+nop
+mov [esp+24],edi
+
+exit:
+jmp returnhere
+
+"game.exe"+E53A9:
+jmp newmem
+nop
+returnhere:
+
+
+ 
+ 
+[DISABLE]
+//code from here till the end of the code will be used to disable the cheat
+dealloc(newmem)
+"game.exe"+E53A9:
+db 2B C7 89 7C 24 24
+//sub eax,edi
+//mov [esp+24],edi
+</AssemblerScript>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>3</ID>
+      <Description>"No description"</Description>
+      <ShowAsSigned>0</ShowAsSigned>
+      <VariableType>4 Bytes</VariableType>
+      <Address>A35DB4</Address>
+      <Offsets>
+        <Offset>52D0</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>4</ID>
+      <Description>"No description"</Description>
+      <ShowAsSigned>0</ShowAsSigned>
+      <VariableType>4 Bytes</VariableType>
+      <Address>A35DB4</Address>
+      <Offsets>
+        <Offset>52D4</Offset>
+      </Offsets>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>5</ID>
+      <Description>"不消耗电力"</Description>
+      <VariableType>Auto Assembler Script</VariableType>
+      <AssemblerScript>[ENABLE]
+//code from here to '[DISABLE]' will be used to enable the cheat
+alloc(newmem,2048)
+label(returnhere)
+label(originalcode)
+label(exit)
+
+newmem: //this is allocated memory, you have read,write,execute access
+//place your code here
+
+originalcode:
+nop
+mov [esi+000052D4],ecx
+
+exit:
+jmp returnhere
+
+"game.exe"+F2D99:
+jmp newmem
+nop 3
+returnhere:
+
+
+ 
+ 
+[DISABLE]
+//code from here till the end of the code will be used to disable the cheat
+dealloc(newmem)
+"game.exe"+F2D99:
+db 03 C8 89 8E D4 52 00 00
+//add ecx,eax
+//mov [esi+000052D4],ecx
+</AssemblerScript>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>6</ID>
+      <Description>"快速建筑"</Description>
+      <VariableType>Auto Assembler Script</VariableType>
+      <AssemblerScript>[ENABLE]
+//code from here to '[DISABLE]' will be used to enable the cheat
+alloc(newmem,2048)
+label(returnhere)
+label(originalcode)
+label(exit)
+
+newmem: //this is allocated memory, you have read,write,execute access
+//place your code here
+
+originalcode:
+nop
+
+exit:
+jmp returnhere
+
+"game.exe"+B936A:
+jmp newmem
+returnhere:
+
+
+ 
+ 
+[DISABLE]
+//code from here till the end of the code will be used to disable the cheat
+dealloc(newmem)
+"game.exe"+B936A:
+db A1 2C 0D A4 00
+//mov eax,[game.exe+640D2C]
+</AssemblerScript>
+    </CheatEntry>
+    <CheatEntry>
+      <ID>7</ID>
+      <Description>"随意建筑"</Description>
+      <VariableType>Auto Assembler Script</VariableType>
+      <AssemblerScript>[ENABLE]
+//code from here to '[DISABLE]' will be used to enable the cheat
+alloc(newmem,2048)
+label(returnhere)
+label(originalcode)
+label(exit)
+
+newmem: //this is allocated memory, you have read,write,execute access
+//place your code here
+
+originalcode:
+nop
+mov al,[ebp+0000117D]
+test al,al
+nop
+
+exit:
+jmp returnhere
+
+"game.exe"+9BC1C:
+jmp newmem
+nop F
+returnhere:
+
+
+ 
+ 
+[DISABLE]
+//code from here till the end of the code will be used to disable the cheat
+dealloc(newmem)
+"game.exe"+9BC1C:
+db 0F 84 C4 01 00 00 8A 85 7D 11 00 00 84 C0 0F 84 B6 01 00 00
+//je game.exe+9BDE6
+//mov al,[ebp+0000117D]
+//test al,al
+//je game.exe+9BDE6
+</AssemblerScript>
+    </CheatEntry>
+  </CheatEntries>
+  <CheatCodes>
+    <CodeEntry>
+      <Description>Change of mov edx,[esi+24]</Description>
+      <AddressString>game.exe+B9362</AddressString>
+      <Before>
+        <Byte>00</Byte>
+        <Byte>00</Byte>
+        <Byte>8B</Byte>
+        <Byte>46</Byte>
+        <Byte>38</Byte>
+      </Before>
+      <Actual>
+        <Byte>8B</Byte>
+        <Byte>56</Byte>
+        <Byte>24</Byte>
+      </Actual>
+      <After>
+        <Byte>03</Byte>
+        <Byte>D0</Byte>
+        <Byte>89</Byte>
+        <Byte>56</Byte>
+        <Byte>24</Byte>
+      </After>
+    </CodeEntry>
+    <CodeEntry>
+      <Description>Change of add edx,eax</Description>
+      <AddressString>game.exe+B9365</AddressString>
+      <Before>
+        <Byte>46</Byte>
+        <Byte>38</Byte>
+        <Byte>90</Byte>
+        <Byte>90</Byte>
+        <Byte>90</Byte>
+      </Before>
+      <Actual>
+        <Byte>03</Byte>
+        <Byte>D0</Byte>
+      </Actual>
+      <After>
+        <Byte>89</Byte>
+        <Byte>56</Byte>
+        <Byte>24</Byte>
+        <Byte>A1</Byte>
+        <Byte>2C</Byte>
+      </After>
+    </CodeEntry>
+    <CodeEntry>
+      <Description>Change of mov [esi+24],edx</Description>
+      <AddressString>game.exe+B9367</AddressString>
+      <Before>
+        <Byte>8B</Byte>
+        <Byte>56</Byte>
+        <Byte>24</Byte>
+        <Byte>03</Byte>
+        <Byte>D0</Byte>
+      </Before>
+      <Actual>
+        <Byte>89</Byte>
+        <Byte>56</Byte>
+        <Byte>24</Byte>
+      </Actual>
+      <After>
+        <Byte>A1</Byte>
+        <Byte>2C</Byte>
+        <Byte>0D</Byte>
+        <Byte>A4</Byte>
+        <Byte>00</Byte>
+      </After>
+    </CodeEntry>
+    <CodeEntry>
+      <Description>Change of add eax,ecx</Description>
+      <AddressString>game.exe+EC86D</AddressString>
+      <Before>
+        <Byte>3B</Byte>
+        <Byte>D8</Byte>
+        <Byte>0F</Byte>
+        <Byte>9C</Byte>
+        <Byte>C3</Byte>
+      </Before>
+      <Actual>
+        <Byte>03</Byte>
+        <Byte>C1</Byte>
+      </Actual>
+      <After>
+        <Byte>8B</Byte>
+        <Byte>CE</Byte>
+        <Byte>89</Byte>
+        <Byte>86</Byte>
+        <Byte>D4</Byte>
+      </After>
+    </CodeEntry>
+    <CodeEntry>
+      <Description>Change of add edx,eax</Description>
+      <AddressString>game.exe+F2D86</AddressString>
+      <Before>
+        <Byte>52</Byte>
+        <Byte>00</Byte>
+        <Byte>00</Byte>
+        <Byte>8B</Byte>
+        <Byte>CF</Byte>
+      </Before>
+      <Actual>
+        <Byte>03</Byte>
+        <Byte>D0</Byte>
+      </Actual>
+      <After>
+        <Byte>89</Byte>
+        <Byte>96</Byte>
+        <Byte>D0</Byte>
+        <Byte>52</Byte>
+        <Byte>00</Byte>
+      </After>
+    </CodeEntry>
+    <CodeEntry>
+      <Description>Change of add ecx,eax</Description>
+      <AddressString>game.exe+F2D99</AddressString>
+      <Before>
+        <Byte>8E</Byte>
+        <Byte>D4</Byte>
+        <Byte>52</Byte>
+        <Byte>00</Byte>
+        <Byte>00</Byte>
+      </Before>
+      <Actual>
+        <Byte>03</Byte>
+        <Byte>C8</Byte>
+      </Actual>
+      <After>
+        <Byte>89</Byte>
+        <Byte>8E</Byte>
+        <Byte>D4</Byte>
+        <Byte>52</Byte>
+        <Byte>00</Byte>
+      </After>
+    </CodeEntry>
+    <CodeEntry>
+      <Description>Change of mov [esi+5C],edi</Description>
+      <AddressString>game.exe+B9823</AddressString>
+      <Before>
+        <Byte>83</Byte>
+        <Byte>CD</Byte>
+        <Byte>FF</Byte>
+        <Byte>3B</Byte>
+        <Byte>C7</Byte>
+      </Before>
+      <Actual>
+        <Byte>89</Byte>
+        <Byte>7E</Byte>
+        <Byte>5C</Byte>
+      </Actual>
+      <After>
+        <Byte>74</Byte>
+        <Byte>03</Byte>
+        <Byte>89</Byte>
+        <Byte>6E</Byte>
+        <Byte>64</Byte>
+      </After>
+    </CodeEntry>
+    <CodeEntry>
+      <Description>Change of mov eax,[game.exe+640D2C]</Description>
+      <AddressString>game.exe+B936A</AddressString>
+      <Before>
+        <Byte>03</Byte>
+        <Byte>D0</Byte>
+        <Byte>89</Byte>
+        <Byte>56</Byte>
+        <Byte>24</Byte>
+      </Before>
+      <Actual>
+        <Byte>A1</Byte>
+        <Byte>2C</Byte>
+        <Byte>0D</Byte>
+        <Byte>A4</Byte>
+        <Byte>00</Byte>
+      </Actual>
+      <After>
+        <Byte>8B</Byte>
+        <Byte>54</Byte>
+        <Byte>24</Byte>
+        <Byte>0C</Byte>
+        <Byte>89</Byte>
+      </After>
+    </CodeEntry>
+    <CodeEntry>
+      <Description>Change of mov eax,[game.exe+640D2C]</Description>
+      <AddressString>game.exe+B93E8</AddressString>
+      <Before>
+        <Byte>30</Byte>
+        <Byte>C6</Byte>
+        <Byte>46</Byte>
+        <Byte>6C</Byte>
+        <Byte>01</Byte>
+      </Before>
+      <Actual>
+        <Byte>A1</Byte>
+        <Byte>2C</Byte>
+        <Byte>0D</Byte>
+        <Byte>A4</Byte>
+        <Byte>00</Byte>
+      </Actual>
+      <After>
+        <Byte>8D</Byte>
+        <Byte>56</Byte>
+        <Byte>28</Byte>
+        <Byte>33</Byte>
+        <Byte>C9</Byte>
+      </After>
+    </CodeEntry>
+  </CheatCodes>
+  <UserdefinedSymbols/>
+</CheatTable>
