@@ -20,7 +20,7 @@
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
-    <ProjectGuid>{3070B6A9-8667-43A2-8BCC-6E4740F051D7}</ProjectGuid>
+    <ProjectGuid>{40510E3D-3BBE-49F6-9EC1-ADA751DED42A}</ProjectGuid>
     <Keyword>MFCProj</Keyword>
     <RootNamespace>RedAlertTrainer</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
@@ -183,69 +183,31 @@
     </ResourceCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="ClassView.h" />
-    <ClInclude Include="FileView.h" />
     <ClInclude Include="framework.h" />
-    <ClInclude Include="MainFrm.h" />
-    <ClInclude Include="OutputWnd.h" />
     <ClInclude Include="pch.h" />
-    <ClInclude Include="PropertiesWnd.h" />
     <ClInclude Include="RedAlertTrainer.h" />
-    <ClInclude Include="RedAlertTrainerDoc.h" />
-    <ClInclude Include="RedAlertTrainerView.h" />
+    <ClInclude Include="RedAlertTrainerDlg.h" />
     <ClInclude Include="Resource.h" />
     <ClInclude Include="targetver.h" />
-    <ClInclude Include="ViewTree.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="ClassView.cpp" />
-    <ClCompile Include="FileView.cpp" />
-    <ClCompile Include="MainFrm.cpp" />
-    <ClCompile Include="OutputWnd.cpp" />
     <ClCompile Include="pch.cpp">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="PropertiesWnd.cpp" />
     <ClCompile Include="RedAlertTrainer.cpp" />
-    <ClCompile Include="RedAlertTrainerDoc.cpp" />
-    <ClCompile Include="RedAlertTrainerView.cpp" />
-    <ClCompile Include="ViewTree.cpp" />
+    <ClCompile Include="RedAlertTrainerDlg.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="RedAlertTrainer.rc" />
   </ItemGroup>
   <ItemGroup>
-    <Image Include="res\classview.bmp" />
-    <Image Include="res\classview_hc.bmp" />
-    <Image Include="res\class_view.ico" />
-    <Image Include="res\class_view_hc.ico" />
-    <Image Include="res\explorer.bmp" />
-    <Image Include="res\explorer_hc.bmp" />
-    <Image Include="res\fileview.bmp" />
-    <Image Include="res\fileview_hc.bmp" />
-    <Image Include="res\file_view.ico" />
-    <Image Include="res\file_view_hc.ico" />
-    <Image Include="res\menuimages.bmp" />
-    <Image Include="res\menuimages_hc.bmp" />
-    <Image Include="res\output_wnd.ico" />
-    <Image Include="res\output_wnd_hc.ico" />
-    <Image Include="res\properties.bmp" />
-    <Image Include="res\properties_hc.bmp" />
-    <Image Include="res\properties_wnd.ico" />
-    <Image Include="res\properties_wnd_hc.ico" />
-    <Image Include="res\RedAlertTrainer.ico" />
-    <Image Include="res\RedAlertTrainerDoc.ico" />
-    <Image Include="res\sort.bmp" />
-    <Image Include="res\sort_hc.bmp" />
-    <Image Include="res\Toolbar.bmp" />
-    <Image Include="res\Toolbar256.bmp" />
-    <Image Include="res\userimages.bmp" />
+    <None Include="res\RedAlertTrainer.rc2" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="res\RedAlertTrainer.rc2" />
+    <Image Include="res\RedAlertTrainer.ico" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
