@@ -516,16 +516,11 @@ DWORD_PTR CRedAlertTrainerDlg::ReadPointerChain(DWORD_PTR baseAddress, DWORD_PTR
 		return 0;
 	}
 
-	AddLog(_T("读取基址[0x%08X] -> 指针1: 0x%08X"), baseAddress, ptr1);
-
 	// 第一次偏移计算
 	DWORD_PTR addr1 = ptr1 + offset1;
 
 	// 第二次偏移计算，得到最终阳光地址
 	DWORD_PTR finalAddr = addr1;
-
-	AddLog(_T("最终地址: 0x%08X"), finalAddr);
-
 	return finalAddr;
 }
 
@@ -549,9 +544,7 @@ DWORD CRedAlertTrainerDlg::ReadValue(DWORD BaseAddr, DWORD offset)
 	{
 		if (bytesRead == sizeof(DWORD))
 		{
-			AddLog(_T("当前值: %d"), dwMenoy);
 			return dwMenoy;
-			
 		}
 	}
 	else
@@ -579,6 +572,9 @@ BOOL CRedAlertTrainerDlg::WriteValue(DWORD dwNewValue, DWORD BaseAddr, DWORD off
 		return FALSE;
 	}
 
+	// 读出上一次值
+	DWORD LastValue = ReadValue(BaseAddr, offset);
+
 	// 修改内存保护属性
 	DWORD dwOldProtect = 0;
 	if (!VirtualProtectEx(m_hProcess, (LPVOID)finalAddress,
@@ -600,7 +596,7 @@ BOOL CRedAlertTrainerDlg::WriteValue(DWORD dwNewValue, DWORD BaseAddr, DWORD off
 	if (bResult && bytesWritten == sizeof(DWORD))
 	{
 		AddLog(_T("成功修改值: %d -> %d"),
-			ReadValue(BaseAddr, offset) - dwNewValue + dwNewValue, dwNewValue);
+			LastValue, dwNewValue);
 
 		// 验证修改
 		DWORD dwVerify = ReadValue(BaseAddr, offset);
