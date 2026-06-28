@@ -32,6 +32,7 @@ public:
 // 实现
 protected:
 	DECLARE_MESSAGE_MAP()
+public:
 };
 
 CAboutDlg::CAboutDlg() : CDialogEx(IDD_ABOUTBOX)
@@ -68,6 +69,8 @@ void CRedAlertTrainerDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_AttachProcess, m_btnAttachProcess);
 	DDX_Control(pDX, IDC_ListLog, m_listLog);
 	DDX_Control(pDX, IDC_CurrentMoney, m_editCurrentMoneyValue);
+	DDX_Control(pDX, IDC_CurrentElectricity, m_editCurrentElectricityValue);
+	DDX_Control(pDX, IDC_CurrentPayload, m_editCurrentPayloaValue);
 	
 }
 
@@ -78,6 +81,8 @@ BEGIN_MESSAGE_MAP(CRedAlertTrainerDlg, CDialogEx)
 	ON_WM_TIMER()  // 添加这一行：定时器消息映射
 	ON_BN_CLICKED(IDC_SelectProcess, &CRedAlertTrainerDlg::OnBnClickedSelectprocess)
 	ON_BN_CLICKED(IDC_AttachProcess, &CRedAlertTrainerDlg::OnBnClickedAttachprocess)
+
+	ON_EN_CHANGE(IDC_CurrentMoney,   &CRedAlertTrainerDlg::OnEnChangeCurrentmoney)
 END_MESSAGE_MAP()
 
 
@@ -285,34 +290,18 @@ void CRedAlertTrainerDlg::OnBnClickedAttachprocess()
 			
 		}
 
-		// 获取最终阳光地址
-		DWORD finalAddress = ReadPointerChain(0xA35DB4, 0x24C);
+		DWORD dwCurrenMenoy = ReadValue(0xA35DB4, 0x24C);
+		CString strValue;
+		strValue.Format(_T("%d"), dwCurrenMenoy);
+		m_editCurrentMoneyValue.SetWindowText(strValue);
 
-		if (finalAddress == 0)
-		{
-			AddLog(_T("无法获取金钱地址"));
-			return;
-		}
+		DWORD dwCurrentElectricity = ReadValue(0xA35DB4, 0x52D0);
+		strValue.Format(_T("%d"), dwCurrentElectricity);
+		m_editCurrentElectricityValue.SetWindowText(strValue);
 
-		// 读取阳光值
-		DWORD dwSunlight = 0;
-		SIZE_T bytesRead = 0;
-
-		if (ReadProcessMemory(m_hProcess, (LPCVOID)finalAddress,
-			&dwSunlight, sizeof(DWORD), &bytesRead))
-		{
-			if (bytesRead == sizeof(DWORD))
-			{
-				AddLog(_T("当前金钱值: %d"), dwSunlight);
-				CString strValue;
-				strValue.Format(_T("%d"), dwSunlight);
-				m_editCurrentMoneyValue.SetWindowText(strValue);
-			}
-		}
-		else
-		{
-			AddLog(_T("读取金钱地址失败"));
-		}
+		DWORD dwCurrentPayload = ReadValue(0xA35DB4, 0x52D4);
+		strValue.Format(_T("%d"), dwCurrentPayload);
+		m_editCurrentPayloaValue.SetWindowText(strValue);
 		//// 自动读取一次阳光值
 		//OnBnClickedReadSunValue();
 	}
@@ -539,3 +528,134 @@ DWORD_PTR CRedAlertTrainerDlg::ReadPointerChain(DWORD_PTR baseAddress, DWORD_PTR
 
 	return finalAddr;
 }
+
+DWORD CRedAlertTrainerDlg::ReadValue(DWORD BaseAddr, DWORD offset)
+{
+	// 获取最终金钱地址
+	DWORD finalAddress = ReadPointerChain(BaseAddr, offset);
+
+	if (finalAddress == 0)
+	{
+		AddLog(_T("无法获取地址"));
+		return 0;
+	}
+
+	// 读读取金钱值
+	DWORD dwMenoy = 0;
+	SIZE_T bytesRead = 0;
+
+	if (ReadProcessMemory(m_hProcess, (LPCVOID)finalAddress,
+		&dwMenoy, sizeof(DWORD), &bytesRead))
+	{
+		if (bytesRead == sizeof(DWORD))
+		{
+			AddLog(_T("当前值: %d"), dwMenoy);
+			return dwMenoy;
+			
+		}
+	}
+	else
+	{
+		AddLog(_T("读取地址失败"));
+	}
+	return 0;
+}
+
+
+// 写入值
+BOOL CRedAlertTrainerDlg::WriteValue(DWORD dwNewValue, DWORD BaseAddr, DWORD offset)
+{
+	if (!m_hProcess || !m_bAttached)
+	{
+		AddLog(_T("错误: 未附加进程"));
+		return FALSE;
+	}
+
+	// 获取最终金钱地址
+	DWORD finalAddress = ReadPointerChain(BaseAddr, offset);
+	if (finalAddress == 0)
+	{
+		AddLog(_T("错误: 未获取地址"));
+		return FALSE;
+	}
+
+	// 修改内存保护属性
+	DWORD dwOldProtect = 0;
+	if (!VirtualProtectEx(m_hProcess, (LPVOID)finalAddress,
+		sizeof(DWORD), PAGE_EXECUTE_READWRITE, &dwOldProtect))
+	{
+		AddLog(_T("修改内存保护失败，错误码: %d"), GetLastError());
+		// 继续尝试写入
+	}
+
+	// 写入新值
+	SIZE_T bytesWritten = 0;
+	BOOL bResult = WriteProcessMemory(m_hProcess, (LPVOID)finalAddress,
+		&dwNewValue, sizeof(DWORD), &bytesWritten);
+
+	// 恢复内存保护属性
+	VirtualProtectEx(m_hProcess, (LPVOID)finalAddress,
+		sizeof(DWORD), dwOldProtect, &dwOldProtect);
+
+	if (bResult && bytesWritten == sizeof(DWORD))
+	{
+		AddLog(_T("成功修改值: %d -> %d"),
+			ReadValue(BaseAddr, offset) - dwNewValue + dwNewValue, dwNewValue);
+
+		// 验证修改
+		DWORD dwVerify = ReadValue(BaseAddr, offset);
+		if (dwVerify == dwNewValue)
+		{
+			AddLog(_T("验证成功: 值已更新为 %d"), dwVerify);
+			return TRUE;
+		}
+		else
+		{
+			AddLog(_T("警告: 验证失败，当前值为 %d"), dwVerify);
+			return FALSE;
+		}
+	}
+	else
+	{
+		AddLog(_T("写入失败，错误码: %d"), GetLastError());
+		return FALSE;
+	}
+}
+
+void CRedAlertTrainerDlg::OnEnChangeCurrentmoney()
+{
+	// TODO:  如果该控件是 RICHEDIT 控件，它将不
+	// 发送此通知，除非重写 CDialogEx::OnInitDialog()
+	// 函数并调用 CRichEditCtrl().SetEventMask()，
+	// 同时将 ENM_CHANGE 标志“或”运算到掩码中。
+
+	// TODO:  在此添加控件通知处理程序代码
+	 // 1. 获取编辑框中的文本
+	CString strText;
+	GetDlgItemText(IDC_CurrentMoney, strText); 
+
+	if (strText == m_strLastEditText)
+	{
+		// 文本没有实质变化，直接返回，不执行任何动作
+		return;
+	}
+
+	if (strText.IsEmpty())
+	{
+		return;
+	}
+
+	m_strLastEditText = strText;
+
+	int dwNewValue = _ttoi(strText);
+	//AddLog(_T("准备修改金钱值为: %d"), dwNewValue);
+	if (WriteValue(dwNewValue, 0xA35DB4, 0x24C))
+	{
+		// 刷新显示
+		DWORD dwCurrent = ReadValue(0xA35DB4, 0x24C);
+		CString strCurrent;
+		strCurrent.Format(_T("%d"), dwCurrent);
+		m_editCurrentMoneyValue.SetWindowText(strCurrent);
+	}
+}
+

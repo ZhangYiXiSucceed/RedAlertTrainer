@@ -58,7 +58,14 @@ public:
 	BOOL AttachToProcess();
 	BOOL FindProcessId(LPCTSTR szProcessName, DWORD& dwProcessId);
 
-	CEdit m_editCurrentMoneyValue;     // 阳光值显示编辑框
+	CEdit m_editCurrentMoneyValue;     // 金钱值显示编辑框
+	CEdit m_editCurrentElectricityValue;     // 金钱值显示编辑框
+	CEdit m_editCurrentPayloaValue;     // 金钱值显示编辑框
 	DWORD_PTR GetModuleBaseAddress();
 	DWORD_PTR ReadPointerChain(DWORD_PTR baseAddress, DWORD_PTR offset1);
+	DWORD ReadValue(DWORD BaseAddr, DWORD offset);
+	BOOL  WriteValue(DWORD dwNewValue, DWORD BaseAddr, DWORD offset);
+
+	afx_msg void OnEnChangeCurrentmoney();
+	CString m_strLastEditText;
 };
