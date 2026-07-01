@@ -71,7 +71,10 @@ void CRedAlertTrainerDlg::DoDataExchange(CDataExchange* pDX)
 	DDX_Control(pDX, IDC_CurrentMoney, m_editCurrentMoneyValue);
 	DDX_Control(pDX, IDC_CurrentElectricity, m_editCurrentElectricityValue);
 	DDX_Control(pDX, IDC_CurrentPayload, m_editCurrentPayloaValue);
-	
+	DDX_Control(pDX, IDC_NoMoneyConsume, m_checkNoMoneyConsume);
+	DDX_Control(pDX, IDC_NoPowerConsume, m_checkNoPowerConsume);
+	DDX_Control(pDX, IDC_FastBuild, m_checkFastBuild);
+	DDX_Control(pDX, IDC_FreeBuild, m_checkFreeBuild);
 }
 
 BEGIN_MESSAGE_MAP(CRedAlertTrainerDlg, CDialogEx)
@@ -83,6 +86,12 @@ BEGIN_MESSAGE_MAP(CRedAlertTrainerDlg, CDialogEx)
 	ON_BN_CLICKED(IDC_AttachProcess, &CRedAlertTrainerDlg::OnBnClickedAttachprocess)
 
 	ON_EN_CHANGE(IDC_CurrentMoney,   &CRedAlertTrainerDlg::OnEnChangeCurrentmoney)
+	ON_BN_CLICKED(IDC_NoMoneyConsume, &CRedAlertTrainerDlg::OnBnClickedCheckNoMoneyConsume)
+	ON_BN_CLICKED(IDC_NoPowerConsume, &CRedAlertTrainerDlg::OnBnClickedCheckNoPowerConsume)
+	ON_BN_CLICKED(IDC_FastBuild, &CRedAlertTrainerDlg::OnBnClickedCheckFastBuild)
+	ON_BN_CLICKED(IDC_FreeBuild, &CRedAlertTrainerDlg::OnBnClickedCheckFreeBuild)
+
+	
 END_MESSAGE_MAP()
 
 
@@ -122,6 +131,55 @@ BOOL CRedAlertTrainerDlg::OnInitDialog()
 	// TODO: 在此添加额外的初始化代码
 	// 设置定时器，等待控件完全创建图片
 	SetTimer(1, 100, NULL);  // 100毫秒后触发
+
+	// 初始化不消化金钱复选框
+	m_checkNoMoneyConsume.SetCheck(BST_UNCHECKED);
+	m_bNoMoneyConsumeEnabled = FALSE;
+	m_dwNoMoneyConsumeAddress = 0;
+	m_dwNoMoneyConsumeAllocated = 0;
+	m_bNoMoneyConsumeMemoryAllocated = FALSE;
+	m_checkNoMoneyConsume.EnableWindow(FALSE);
+
+	AddLog(_T("基地址偏移: 0x%X"), RED_ALERT_BASE_ADDR);
+	AddLog(_T("金钱地址偏移: 0x%X"), MONEY_OFFSET);
+	AddLog(_T("电力地址偏移: 0x%X"), ELECTRICITY_OFFSET);
+	AddLog(_T("负载地址偏移: 0x%X"), PAYLOAD_OFFSET);
+
+	AddLog(_T("不消化金钱功能已加载"));
+	AddLog(_T("不消化金钱地址偏移: 0x%X"), NO_MONEY_CONSUME_OFFSET);
+
+	// 初始化不消耗电力复选框
+	m_checkNoPowerConsume.SetCheck(BST_UNCHECKED);
+	m_bNoPowerConsumeEnabled = FALSE;
+	m_dwNoPowerConsumeAddress = 0;
+	m_dwNoPowerConsumeAllocated = 0;
+	m_bNoPowerConsumeMemoryAllocated = FALSE;
+	m_checkNoPowerConsume.EnableWindow(FALSE);
+
+	AddLog(_T("不消耗电力功能已加载"));
+	AddLog(_T("不消耗电力地址偏移: 0x%X"), NO_POWER_CONSUME_OFFSET);
+
+	// 初始化快速建筑复选框
+	m_checkFastBuild.SetCheck(BST_UNCHECKED);
+	m_bFastBuildEnabled = FALSE;
+	m_dwFastBuildAddress = 0;
+	m_dwFastBuildAllocated = 0;
+	m_bFastBuildMemoryAllocated = FALSE;
+	m_checkFastBuild.EnableWindow(FALSE);
+
+	AddLog(_T("快速建筑功能已加载"));
+	AddLog(_T("快速建筑地址偏移: 0x%X"), FAST_BUILD_OFFSET);
+
+	// 初始化随意建筑复选框
+	m_checkFreeBuild.SetCheck(BST_UNCHECKED);
+	m_bFreeBuildEnabled = FALSE;
+	m_dwFreeBuildAddress = 0;
+	m_dwFreeBuildAllocated = 0;
+	m_bFreeBuildMemoryAllocated = FALSE;
+	m_checkFreeBuild.EnableWindow(FALSE);
+
+	AddLog(_T("随意建筑功能已加载"));
+	AddLog(_T("随意建筑地址偏移: 0x%X"), FREE_BUILD_OFFSET);
 
 	return TRUE;  // 除非将焦点设置到控件，否则返回 TRUE
 }
@@ -188,7 +246,13 @@ void CRedAlertTrainerDlg::OnTimer(UINT_PTR nIDEvent)
 		{
 			ShowBackgroundPicture(defaultPath);
 		}
+
+		if (m_bAttached)
+		{
+			ReadBaseValue();
+		}
 	}
+
 	CDialogEx::OnTimer(nIDEvent);
 }
 
@@ -284,26 +348,35 @@ void CRedAlertTrainerDlg::OnBnClickedAttachprocess()
 		m_btnAttachProcess.SetWindowText(_T("分离进程"));
 
 		// 获取模块基址并显示初始值功能地址
+		// 获取模块基址
 		DWORD_PTR dwModuleBase = GetModuleBaseAddress();
 		if (dwModuleBase)
 		{
-			
+			// 不消化金钱功能地址
+			m_dwNoMoneyConsumeAddress = dwModuleBase + NO_MONEY_CONSUME_OFFSET;
+			AddLog(_T("[不消化金钱] 目标地址: 0x%08X"), m_dwNoMoneyConsumeAddress);
+
+			// 不消耗电力功能地址
+			m_dwNoPowerConsumeAddress = dwModuleBase + NO_POWER_CONSUME_OFFSET;
+			AddLog(_T("[不消耗电力] 目标地址: 0x%08X"), m_dwNoPowerConsumeAddress);
+		
+			// 快速建筑功能地址
+			m_dwFastBuildAddress = dwModuleBase + FAST_BUILD_OFFSET;
+			AddLog(_T("[快速建筑] 目标地址: 0x%08X"), m_dwFastBuildAddress);
+		
+			// 随意建筑功能地址
+			m_dwFreeBuildAddress = dwModuleBase + FREE_BUILD_OFFSET;
+			AddLog(_T("[随意建筑] 目标地址: 0x%08X"), m_dwFreeBuildAddress);
 		}
 
-		DWORD dwCurrenMenoy = ReadValue(0xA35DB4, 0x24C);
-		CString strValue;
-		strValue.Format(_T("%d"), dwCurrenMenoy);
-		m_editCurrentMoneyValue.SetWindowText(strValue);
+		// 启用控件
+		m_checkFastBuild.EnableWindow(TRUE);
+		m_checkNoMoneyConsume.EnableWindow(TRUE);
+		m_checkNoPowerConsume.EnableWindow(TRUE);
+		m_checkFreeBuild.EnableWindow(TRUE);
 
-		DWORD dwCurrentElectricity = ReadValue(0xA35DB4, 0x52D0);
-		strValue.Format(_T("%d"), dwCurrentElectricity);
-		m_editCurrentElectricityValue.SetWindowText(strValue);
-
-		DWORD dwCurrentPayload = ReadValue(0xA35DB4, 0x52D4);
-		strValue.Format(_T("%d"), dwCurrentPayload);
-		m_editCurrentPayloaValue.SetWindowText(strValue);
-		//// 自动读取一次阳光值
-		//OnBnClickedReadSunValue();
+		//// 自动读取一次数值
+		ReadBaseValue();
 	}
 }
 
@@ -321,6 +394,11 @@ void CRedAlertTrainerDlg::DetachFromProcess()
 
 	// 恢复按钮文字
 	m_btnAttachProcess.SetWindowText(_T("附加进程"));
+	// 禁用控件
+	m_checkFastBuild.EnableWindow(FALSE);
+	m_checkNoMoneyConsume.EnableWindow(FALSE);
+	m_checkNoPowerConsume.EnableWindow(FALSE);
+	m_checkFreeBuild.EnableWindow(FALSE);
 
 	AddLog(_T("已分离进程"));
 }
@@ -655,3 +733,1203 @@ void CRedAlertTrainerDlg::OnEnChangeCurrentmoney()
 	}
 }
 
+
+void CRedAlertTrainerDlg::ReadBaseValue()
+{
+	DWORD dwCurrenMenoy = ReadValue(0xA35DB4, 0x24C);
+	CString strValue;
+	strValue.Format(_T("%d"), dwCurrenMenoy);
+	m_editCurrentMoneyValue.SetWindowText(strValue);
+
+	DWORD dwCurrentElectricity = ReadValue(0xA35DB4, 0x52D0);
+	strValue.Format(_T("%d"), dwCurrentElectricity);
+	m_editCurrentElectricityValue.SetWindowText(strValue);
+
+	DWORD dwCurrentPayload = ReadValue(0xA35DB4, PAYLOAD_OFFSET);
+	strValue.Format(_T("%d"), dwCurrentPayload);
+	m_editCurrentPayloaValue.SetWindowText(strValue);
+}
+
+// 原始字节码: sub eax,edi; mov [esp+24],edi (6字节)
+const BYTE NO_MONEY_CONSUME_ORIGINAL_BYTES[] = {
+	0x2B, 0xC7,        // sub eax, edi
+	0x89, 0x7C, 0x24, 0x24  // mov [esp+24], edi
+};
+
+// 自定义代码: nop; mov [esp+24],edi (6字节)
+// 将 sub eax,edi 替换为 nop，不消耗金钱
+const BYTE NO_MONEY_CONSUME_NEW_CODE[] = {
+	0x90,              // nop (替换 sub eax, edi)
+	0x90,              // nop (额外填充)
+	0x89, 0x7C, 0x24, 0x24,  // mov [esp+24], edi
+	0xE9               // jmp返回
+};
+
+// 分配内存
+BOOL CRedAlertTrainerDlg::AllocateMemoryForNoMoneyConsume()
+{
+	if (m_bNoMoneyConsumeMemoryAllocated && m_dwNoMoneyConsumeAllocated)
+	{
+		return TRUE;
+	}
+
+	AddLog(_T("[不消化金钱] 正在分配内存..."));
+
+	m_dwNoMoneyConsumeAllocated = (DWORD_PTR)VirtualAllocEx(
+		m_hProcess,
+		NULL,
+		2048,
+		MEM_COMMIT | MEM_RESERVE,
+		PAGE_EXECUTE_READWRITE
+	);
+
+	if (!m_dwNoMoneyConsumeAllocated)
+	{
+		AddLog(_T("[不消化金钱] 分配内存失败，错误码: %d"), GetLastError());
+		return FALSE;
+	}
+
+	AddLog(_T("[不消化金钱] 内存分配成功: 0x%08X"), m_dwNoMoneyConsumeAllocated);
+	m_bNoMoneyConsumeMemoryAllocated = TRUE;
+	return TRUE;
+}
+
+// 写入自定义代码
+BOOL CRedAlertTrainerDlg::WriteCustomCodeForNoMoneyConsume()
+{
+	if (!m_bNoMoneyConsumeMemoryAllocated)
+		return FALSE;
+
+	// 计算返回地址：原地址 + 6 (原始指令6字节)
+	DWORD_PTR returnAddress = m_dwNoMoneyConsumeAddress + 6;
+
+	// 计算JMP位置和偏移
+	DWORD_PTR jmpPosition = m_dwNoMoneyConsumeAllocated + sizeof(NO_MONEY_CONSUME_NEW_CODE);
+	DWORD jmpOffset = (DWORD)(returnAddress - (jmpPosition + 4));
+
+	const size_t codeSize = sizeof(NO_MONEY_CONSUME_NEW_CODE) + 4;
+	BYTE* fullCode = new BYTE[codeSize];
+
+	memcpy(fullCode, NO_MONEY_CONSUME_NEW_CODE, sizeof(NO_MONEY_CONSUME_NEW_CODE));
+
+	// 设置JMP偏移
+	size_t jmpPos = sizeof(NO_MONEY_CONSUME_NEW_CODE) - 1;
+	fullCode[jmpPos] = 0xE9;
+	fullCode[sizeof(NO_MONEY_CONSUME_NEW_CODE)] = (BYTE)(jmpOffset & 0xFF);
+	fullCode[sizeof(NO_MONEY_CONSUME_NEW_CODE) + 1] = (BYTE)((jmpOffset >> 8) & 0xFF);
+	fullCode[sizeof(NO_MONEY_CONSUME_NEW_CODE) + 2] = (BYTE)((jmpOffset >> 16) & 0xFF);
+	fullCode[sizeof(NO_MONEY_CONSUME_NEW_CODE) + 3] = (BYTE)((jmpOffset >> 24) & 0xFF);
+
+	AddLog(_T("[不消化金钱] 分配地址: 0x%08X"), m_dwNoMoneyConsumeAllocated);
+	AddLog(_T("[不消化金钱] 目标地址: 0x%08X"), m_dwNoMoneyConsumeAddress);
+	AddLog(_T("[不消化金钱] 返回地址: 0x%08X (原地址+6)"), returnAddress);
+	AddLog(_T("[不消化金钱] JMP位置: 0x%08X"), jmpPosition);
+	AddLog(_T("[不消化金钱] JMP偏移: 0x%08X"), jmpOffset);
+
+	SIZE_T bytesWritten = 0;
+	BOOL bResult = WriteProcessMemory(m_hProcess, (LPVOID)m_dwNoMoneyConsumeAllocated,
+		fullCode, codeSize, &bytesWritten);
+
+	if (bResult && bytesWritten == codeSize)
+	{
+		CString strCode;
+		for (size_t i = 0; i < codeSize; i++)
+		{
+			strCode.AppendFormat(_T("%02X "), fullCode[i]);
+		}
+		AddLog(_T("[不消化金钱] 写入代码: %s"), strCode);
+		AddLog(_T("[不消化金钱] 自定义代码写入成功"));
+	}
+	else
+	{
+		AddLog(_T("[不消化金钱] 写入失败，错误码: %d"), GetLastError());
+	}
+
+	delete[] fullCode;
+	return (bResult && bytesWritten == codeSize);
+}
+
+// 安装Hook
+BOOL CRedAlertTrainerDlg::InstallHookForNoMoneyConsume()
+{
+	AddLog(_T("[不消化金钱] 正在安装Hook..."));
+
+	// 原始指令6字节，JMP指令5字节，需要1个NOP填充保持6字节
+	DWORD jmpOffset = (DWORD)(m_dwNoMoneyConsumeAllocated - (m_dwNoMoneyConsumeAddress + 5));
+
+	// 6字节指令: JMP(5字节) + NOP(1字节)
+	BYTE jmpInstruction[6] = { 0xE9 };
+	jmpInstruction[1] = (BYTE)(jmpOffset & 0xFF);
+	jmpInstruction[2] = (BYTE)((jmpOffset >> 8) & 0xFF);
+	jmpInstruction[3] = (BYTE)((jmpOffset >> 16) & 0xFF);
+	jmpInstruction[4] = (BYTE)((jmpOffset >> 24) & 0xFF);
+	jmpInstruction[5] = 0x90;  // NOP填充，保持6字节
+
+	AddLog(_T("[不消化金钱] JMP从 0x%08X 到 0x%08X"),
+		m_dwNoMoneyConsumeAddress, m_dwNoMoneyConsumeAllocated);
+	AddLog(_T("[不消化金钱] JMP偏移: 0x%08X"), jmpOffset);
+	AddLog(_T("[不消化金钱] JMP指令: %02X %02X %02X %02X %02X %02X"),
+		jmpInstruction[0], jmpInstruction[1], jmpInstruction[2],
+		jmpInstruction[3], jmpInstruction[4], jmpInstruction[5]);
+
+	DWORD dwOldProtect = 0;
+	VirtualProtectEx(m_hProcess, (LPVOID)m_dwNoMoneyConsumeAddress, 6,
+		PAGE_EXECUTE_READWRITE, &dwOldProtect);
+
+	SIZE_T bytesWritten = 0;
+	BOOL bResult = WriteProcessMemory(m_hProcess, (LPVOID)m_dwNoMoneyConsumeAddress,
+		jmpInstruction, 6, &bytesWritten);
+
+	VirtualProtectEx(m_hProcess, (LPVOID)m_dwNoMoneyConsumeAddress, 6, dwOldProtect, &dwOldProtect);
+
+	if (bResult && bytesWritten == 6)
+	{
+		AddLog(_T("[不消化金钱] Hook安装成功！"));
+		return TRUE;
+	}
+	else
+	{
+		AddLog(_T("[不消化金钱] Hook安装失败，错误码: %d"), GetLastError());
+		return FALSE;
+	}
+}
+
+// 释放内存
+void CRedAlertTrainerDlg::FreeNoMoneyConsumeMemory()
+{
+	if (m_bNoMoneyConsumeMemoryAllocated && m_dwNoMoneyConsumeAllocated)
+	{
+		VirtualFreeEx(m_hProcess, (LPVOID)m_dwNoMoneyConsumeAllocated, 0, MEM_RELEASE);
+		AddLog(_T("[不消化金钱] 内存已释放"));
+		m_bNoMoneyConsumeMemoryAllocated = FALSE;
+		m_dwNoMoneyConsumeAllocated = 0;
+	}
+}
+
+// 启用不消化金钱
+void CRedAlertTrainerDlg::EnableNoMoneyConsume()
+{
+	if (!m_hProcess || !m_bAttached)
+	{
+		AddLog(_T("[不消化金钱] 错误: 未附加进程"));
+		return;
+	}
+
+	if (m_bNoMoneyConsumeEnabled)
+	{
+		AddLog(_T("[不消化金钱] 已经启用"));
+		return;
+	}
+
+	AddLog(_T("[不消化金钱] 正在启用..."));
+
+	// 获取目标地址
+	if (m_dwNoMoneyConsumeAddress == 0)
+	{
+		DWORD_PTR dwModuleBase = GetModuleBaseAddress();
+		if (dwModuleBase)
+		{
+			m_dwNoMoneyConsumeAddress = dwModuleBase + NO_MONEY_CONSUME_OFFSET;
+			AddLog(_T("[不消化金钱] 目标地址: 0x%08X"), m_dwNoMoneyConsumeAddress);
+		}
+		else
+		{
+			AddLog(_T("[不消化金钱] 无法获取模块基址"));
+			return;
+		}
+	}
+
+	// 读取当前字节码
+	BYTE currentBytes[6] = { 0 };
+	SIZE_T bytesRead = 0;
+	if (ReadProcessMemory(m_hProcess, (LPCVOID)m_dwNoMoneyConsumeAddress, currentBytes, 6, &bytesRead))
+	{
+		AddLog(_T("[不消化金钱] 当前字节码: %02X %02X %02X %02X %02X %02X"),
+			currentBytes[0], currentBytes[1], currentBytes[2],
+			currentBytes[3], currentBytes[4], currentBytes[5]);
+	}
+
+	// 1. 分配内存
+	if (!AllocateMemoryForNoMoneyConsume())
+		return;
+
+	// 2. 写入自定义代码
+	if (!WriteCustomCodeForNoMoneyConsume())
+	{
+		FreeNoMoneyConsumeMemory();
+		return;
+	}
+
+	// 3. 安装Hook
+	if (!InstallHookForNoMoneyConsume())
+	{
+		FreeNoMoneyConsumeMemory();
+		return;
+	}
+
+	m_bNoMoneyConsumeEnabled = TRUE;
+	AddLog(_T("[不消化金钱] 成功启用！购买物品不消耗金钱"));
+}
+
+// 禁用不消化金钱
+void CRedAlertTrainerDlg::DisableNoMoneyConsume()
+{
+	if (!m_hProcess || !m_bAttached)
+	{
+		AddLog(_T("[不消化金钱] 错误: 未附加进程"));
+		return;
+	}
+
+	if (!m_bNoMoneyConsumeEnabled)
+	{
+		AddLog(_T("[不消化金钱] 已经禁用"));
+		return;
+	}
+
+	AddLog(_T("[不消化金钱] 正在禁用..."));
+
+	if (m_dwNoMoneyConsumeAddress == 0)
+	{
+		DWORD_PTR dwModuleBase = GetModuleBaseAddress();
+		if (dwModuleBase)
+			m_dwNoMoneyConsumeAddress = dwModuleBase + NO_MONEY_CONSUME_OFFSET;
+	}
+
+	// 恢复原始字节码 (6字节)
+	DWORD dwOldProtect = 0;
+	VirtualProtectEx(m_hProcess, (LPVOID)m_dwNoMoneyConsumeAddress, sizeof(NO_MONEY_CONSUME_ORIGINAL_BYTES),
+		PAGE_EXECUTE_READWRITE, &dwOldProtect);
+
+	SIZE_T bytesWritten = 0;
+	BOOL bResult = WriteProcessMemory(m_hProcess, (LPVOID)m_dwNoMoneyConsumeAddress,
+		NO_MONEY_CONSUME_ORIGINAL_BYTES, sizeof(NO_MONEY_CONSUME_ORIGINAL_BYTES), &bytesWritten);
+
+	VirtualProtectEx(m_hProcess, (LPVOID)m_dwNoMoneyConsumeAddress, sizeof(NO_MONEY_CONSUME_ORIGINAL_BYTES),
+		dwOldProtect, &dwOldProtect);
+
+	if (bResult && bytesWritten == sizeof(NO_MONEY_CONSUME_ORIGINAL_BYTES))
+	{
+		AddLog(_T("[不消化金钱] 成功禁用！恢复正常金钱消耗"));
+		m_bNoMoneyConsumeEnabled = FALSE;
+		FreeNoMoneyConsumeMemory();
+	}
+	else
+	{
+		AddLog(_T("[不消化金钱] 恢复失败，错误码: %d"), GetLastError());
+	}
+}
+
+// CheckBox点击响应
+void CRedAlertTrainerDlg::OnBnClickedCheckNoMoneyConsume()
+{
+	int nCheck = m_checkNoMoneyConsume.GetCheck();
+
+	if (!m_bAttached || !m_hProcess)
+	{
+		AddLog(_T("[不消化金钱] 错误: 请先附加进程"));
+		m_checkNoMoneyConsume.SetCheck(m_bNoMoneyConsumeEnabled ? BST_CHECKED : BST_UNCHECKED);
+		return;
+	}
+
+	if (nCheck == BST_CHECKED)
+	{
+		EnableNoMoneyConsume();
+	}
+	else
+	{
+		DisableNoMoneyConsume();
+	}
+}
+
+// 原始字节码: add ecx,eax; mov [esi+000052D4],ecx (8字节)
+const BYTE NO_POWER_CONSUME_ORIGINAL_BYTES[] = {
+	0x03, 0xC8,                          // add ecx, eax
+	0x89, 0x8E, 0xD4, 0x52, 0x00, 0x00   // mov [esi+000052D4], ecx
+};
+
+// 自定义代码: nop; mov [esi+000052D4],ecx (8字节)
+// 将 add ecx,eax 替换为 nop，不消耗电力
+const BYTE NO_POWER_CONSUME_NEW_CODE[] = {
+	0x90,              // nop (替换 add ecx, eax)
+	0x90,              // nop (额外填充)
+	0x89, 0x8E, 0xD4, 0x52, 0x00, 0x00,  // mov [esi+000052D4], ecx
+	0xE9               // jmp返回
+};
+
+// ==================== 不消耗电力功能 ====================
+
+// 分配内存
+BOOL CRedAlertTrainerDlg::AllocateMemoryForNoPowerConsume()
+{
+	if (m_bNoPowerConsumeMemoryAllocated && m_dwNoPowerConsumeAllocated)
+	{
+		return TRUE;
+	}
+
+	AddLog(_T("[不消耗电力] 正在分配内存..."));
+
+	m_dwNoPowerConsumeAllocated = (DWORD_PTR)VirtualAllocEx(
+		m_hProcess,
+		NULL,
+		2048,
+		MEM_COMMIT | MEM_RESERVE,
+		PAGE_EXECUTE_READWRITE
+	);
+
+	if (!m_dwNoPowerConsumeAllocated)
+	{
+		AddLog(_T("[不消耗电力] 分配内存失败，错误码: %d"), GetLastError());
+		return FALSE;
+	}
+
+	AddLog(_T("[不消耗电力] 内存分配成功: 0x%08X"), m_dwNoPowerConsumeAllocated);
+	m_bNoPowerConsumeMemoryAllocated = TRUE;
+	return TRUE;
+}
+
+// 写入自定义代码
+BOOL CRedAlertTrainerDlg::WriteCustomCodeForNoPowerConsume()
+{
+	if (!m_bNoPowerConsumeMemoryAllocated)
+		return FALSE;
+
+	// 计算返回地址：原地址 + 8 (原始指令8字节)
+	DWORD_PTR returnAddress = m_dwNoPowerConsumeAddress + 8;
+
+	// 计算JMP位置和偏移
+	DWORD_PTR jmpPosition = m_dwNoPowerConsumeAllocated + sizeof(NO_POWER_CONSUME_NEW_CODE);
+	DWORD jmpOffset = (DWORD)(returnAddress - (jmpPosition + 4));
+
+	const size_t codeSize = sizeof(NO_POWER_CONSUME_NEW_CODE) + 4;
+	BYTE* fullCode = new BYTE[codeSize];
+
+	memcpy(fullCode, NO_POWER_CONSUME_NEW_CODE, sizeof(NO_POWER_CONSUME_NEW_CODE));
+
+	// 设置JMP偏移
+	size_t jmpPos = sizeof(NO_POWER_CONSUME_NEW_CODE) - 1;
+	fullCode[jmpPos] = 0xE9;
+	fullCode[sizeof(NO_POWER_CONSUME_NEW_CODE)] = (BYTE)(jmpOffset & 0xFF);
+	fullCode[sizeof(NO_POWER_CONSUME_NEW_CODE) + 1] = (BYTE)((jmpOffset >> 8) & 0xFF);
+	fullCode[sizeof(NO_POWER_CONSUME_NEW_CODE) + 2] = (BYTE)((jmpOffset >> 16) & 0xFF);
+	fullCode[sizeof(NO_POWER_CONSUME_NEW_CODE) + 3] = (BYTE)((jmpOffset >> 24) & 0xFF);
+
+	AddLog(_T("[不消耗电力] 分配地址: 0x%08X"), m_dwNoPowerConsumeAllocated);
+	AddLog(_T("[不消耗电力] 目标地址: 0x%08X"), m_dwNoPowerConsumeAddress);
+	AddLog(_T("[不消耗电力] 返回地址: 0x%08X (原地址+8)"), returnAddress);
+	AddLog(_T("[不消耗电力] JMP位置: 0x%08X"), jmpPosition);
+	AddLog(_T("[不消耗电力] JMP偏移: 0x%08X"), jmpOffset);
+
+	SIZE_T bytesWritten = 0;
+	BOOL bResult = WriteProcessMemory(m_hProcess, (LPVOID)m_dwNoPowerConsumeAllocated,
+		fullCode, codeSize, &bytesWritten);
+
+	if (bResult && bytesWritten == codeSize)
+	{
+		CString strCode;
+		for (size_t i = 0; i < codeSize; i++)
+		{
+			strCode.AppendFormat(_T("%02X "), fullCode[i]);
+		}
+		AddLog(_T("[不消耗电力] 写入代码: %s"), strCode);
+		AddLog(_T("[不消耗电力] 自定义代码写入成功"));
+	}
+	else
+	{
+		AddLog(_T("[不消耗电力] 写入失败，错误码: %d"), GetLastError());
+	}
+
+	delete[] fullCode;
+	return (bResult && bytesWritten == codeSize);
+}
+
+// 安装Hook
+BOOL CRedAlertTrainerDlg::InstallHookForNoPowerConsume()
+{
+	AddLog(_T("[不消耗电力] 正在安装Hook..."));
+
+	// 原始指令8字节，JMP指令5字节，需要3个NOP填充保持8字节
+	DWORD jmpOffset = (DWORD)(m_dwNoPowerConsumeAllocated - (m_dwNoPowerConsumeAddress + 5));
+
+	// 8字节指令: JMP(5字节) + NOP(3字节)
+	BYTE jmpInstruction[8] = { 0xE9 };
+	jmpInstruction[1] = (BYTE)(jmpOffset & 0xFF);
+	jmpInstruction[2] = (BYTE)((jmpOffset >> 8) & 0xFF);
+	jmpInstruction[3] = (BYTE)((jmpOffset >> 16) & 0xFF);
+	jmpInstruction[4] = (BYTE)((jmpOffset >> 24) & 0xFF);
+	jmpInstruction[5] = 0x90;  // NOP填充
+	jmpInstruction[6] = 0x90;  // NOP填充
+	jmpInstruction[7] = 0x90;  // NOP填充
+
+	AddLog(_T("[不消耗电力] JMP从 0x%08X 到 0x%08X"),
+		m_dwNoPowerConsumeAddress, m_dwNoPowerConsumeAllocated);
+	AddLog(_T("[不消耗电力] JMP偏移: 0x%08X"), jmpOffset);
+	AddLog(_T("[不消耗电力] JMP指令: %02X %02X %02X %02X %02X %02X %02X %02X"),
+		jmpInstruction[0], jmpInstruction[1], jmpInstruction[2],
+		jmpInstruction[3], jmpInstruction[4], jmpInstruction[5],
+		jmpInstruction[6], jmpInstruction[7]);
+
+	DWORD dwOldProtect = 0;
+	VirtualProtectEx(m_hProcess, (LPVOID)m_dwNoPowerConsumeAddress, 8,
+		PAGE_EXECUTE_READWRITE, &dwOldProtect);
+
+	SIZE_T bytesWritten = 0;
+	BOOL bResult = WriteProcessMemory(m_hProcess, (LPVOID)m_dwNoPowerConsumeAddress,
+		jmpInstruction, 8, &bytesWritten);
+
+	VirtualProtectEx(m_hProcess, (LPVOID)m_dwNoPowerConsumeAddress, 8, dwOldProtect, &dwOldProtect);
+
+	if (bResult && bytesWritten == 8)
+	{
+		AddLog(_T("[不消耗电力] Hook安装成功！"));
+		return TRUE;
+	}
+	else
+	{
+		AddLog(_T("[不消耗电力] Hook安装失败，错误码: %d"), GetLastError());
+		return FALSE;
+	}
+}
+
+// 释放内存
+void CRedAlertTrainerDlg::FreeNoPowerConsumeMemory()
+{
+	if (m_bNoPowerConsumeMemoryAllocated && m_dwNoPowerConsumeAllocated)
+	{
+		VirtualFreeEx(m_hProcess, (LPVOID)m_dwNoPowerConsumeAllocated, 0, MEM_RELEASE);
+		AddLog(_T("[不消耗电力] 内存已释放"));
+		m_bNoPowerConsumeMemoryAllocated = FALSE;
+		m_dwNoPowerConsumeAllocated = 0;
+	}
+}
+
+// 启用不消耗电力
+void CRedAlertTrainerDlg::EnableNoPowerConsume()
+{
+	if (!m_hProcess || !m_bAttached)
+	{
+		AddLog(_T("[不消耗电力] 错误: 未附加进程"));
+		return;
+	}
+
+	if (m_bNoPowerConsumeEnabled)
+	{
+		AddLog(_T("[不消耗电力] 已经启用"));
+		return;
+	}
+
+	AddLog(_T("[不消耗电力] 正在启用..."));
+
+	// 获取目标地址
+	if (m_dwNoPowerConsumeAddress == 0)
+	{
+		DWORD_PTR dwModuleBase = GetModuleBaseAddress();
+		if (dwModuleBase)
+		{
+			m_dwNoPowerConsumeAddress = dwModuleBase + NO_POWER_CONSUME_OFFSET;
+			AddLog(_T("[不消耗电力] 目标地址: 0x%08X"), m_dwNoPowerConsumeAddress);
+		}
+		else
+		{
+			AddLog(_T("[不消耗电力] 无法获取模块基址"));
+			return;
+		}
+	}
+
+	// 读取当前字节码
+	BYTE currentBytes[8] = { 0 };
+	SIZE_T bytesRead = 0;
+	if (ReadProcessMemory(m_hProcess, (LPCVOID)m_dwNoPowerConsumeAddress, currentBytes, 8, &bytesRead))
+	{
+		AddLog(_T("[不消耗电力] 当前字节码: %02X %02X %02X %02X %02X %02X %02X %02X"),
+			currentBytes[0], currentBytes[1], currentBytes[2], currentBytes[3],
+			currentBytes[4], currentBytes[5], currentBytes[6], currentBytes[7]);
+	}
+
+	// 1. 分配内存
+	if (!AllocateMemoryForNoPowerConsume())
+		return;
+
+	// 2. 写入自定义代码
+	if (!WriteCustomCodeForNoPowerConsume())
+	{
+		FreeNoPowerConsumeMemory();
+		return;
+	}
+
+	// 3. 安装Hook
+	if (!InstallHookForNoPowerConsume())
+	{
+		FreeNoPowerConsumeMemory();
+		return;
+	}
+
+	m_bNoPowerConsumeEnabled = TRUE;
+	AddLog(_T("[不消耗电力] 成功启用！使用电力时不消耗电力"));
+}
+
+// 禁用不消耗电力
+void CRedAlertTrainerDlg::DisableNoPowerConsume()
+{
+	if (!m_hProcess || !m_bAttached)
+	{
+		AddLog(_T("[不消耗电力] 错误: 未附加进程"));
+		return;
+	}
+
+	if (!m_bNoPowerConsumeEnabled)
+	{
+		AddLog(_T("[不消耗电力] 已经禁用"));
+		return;
+	}
+
+	AddLog(_T("[不消耗电力] 正在禁用..."));
+
+	if (m_dwNoPowerConsumeAddress == 0)
+	{
+		DWORD_PTR dwModuleBase = GetModuleBaseAddress();
+		if (dwModuleBase)
+			m_dwNoPowerConsumeAddress = dwModuleBase + NO_POWER_CONSUME_OFFSET;
+	}
+
+	// 恢复原始字节码 (8字节)
+	DWORD dwOldProtect = 0;
+	VirtualProtectEx(m_hProcess, (LPVOID)m_dwNoPowerConsumeAddress, sizeof(NO_POWER_CONSUME_ORIGINAL_BYTES),
+		PAGE_EXECUTE_READWRITE, &dwOldProtect);
+
+	SIZE_T bytesWritten = 0;
+	BOOL bResult = WriteProcessMemory(m_hProcess, (LPVOID)m_dwNoPowerConsumeAddress,
+		NO_POWER_CONSUME_ORIGINAL_BYTES, sizeof(NO_POWER_CONSUME_ORIGINAL_BYTES), &bytesWritten);
+
+	VirtualProtectEx(m_hProcess, (LPVOID)m_dwNoPowerConsumeAddress, sizeof(NO_POWER_CONSUME_ORIGINAL_BYTES),
+		dwOldProtect, &dwOldProtect);
+
+	if (bResult && bytesWritten == sizeof(NO_POWER_CONSUME_ORIGINAL_BYTES))
+	{
+		AddLog(_T("[不消耗电力] 成功禁用！恢复正常电力消耗"));
+		m_bNoPowerConsumeEnabled = FALSE;
+		FreeNoPowerConsumeMemory();
+	}
+	else
+	{
+		AddLog(_T("[不消耗电力] 恢复失败，错误码: %d"), GetLastError());
+	}
+}
+
+// CheckBox点击响应
+void CRedAlertTrainerDlg::OnBnClickedCheckNoPowerConsume()
+{
+	int nCheck = m_checkNoPowerConsume.GetCheck();
+
+	if (!m_bAttached || !m_hProcess)
+	{
+		AddLog(_T("[不消耗电力] 错误: 请先附加进程"));
+		m_checkNoPowerConsume.SetCheck(m_bNoPowerConsumeEnabled ? BST_CHECKED : BST_UNCHECKED);
+		return;
+	}
+
+	if (nCheck == BST_CHECKED)
+	{
+		EnableNoPowerConsume();
+	}
+	else
+	{
+		DisableNoPowerConsume();
+	}
+}
+
+// 原始字节码: mov eax,[game.exe+640D2C] (5字节)
+const BYTE FAST_BUILD_ORIGINAL_BYTES[] = {
+	0xA1, 0x2C, 0x0D, 0xA4, 0x00  // mov eax, [game.exe+640D2C]
+};
+
+// 自定义代码: nop (5字节)
+const BYTE FAST_BUILD_NEW_CODE[] = {
+	0x90, 0x90, 0x90, 0x90, 0x90,  // 5个nop
+	0xE9                          // jmp返回
+};
+
+// ==================== 快速建筑功能 ====================
+
+// 分配内存
+BOOL CRedAlertTrainerDlg::AllocateMemoryForFastBuild()
+{
+	if (m_bFastBuildMemoryAllocated && m_dwFastBuildAllocated)
+	{
+		return TRUE;
+	}
+
+	AddLog(_T("[快速建筑] 正在分配内存..."));
+
+	m_dwFastBuildAllocated = (DWORD_PTR)VirtualAllocEx(
+		m_hProcess,
+		NULL,
+		2048,
+		MEM_COMMIT | MEM_RESERVE,
+		PAGE_EXECUTE_READWRITE
+	);
+
+	if (!m_dwFastBuildAllocated)
+	{
+		AddLog(_T("[快速建筑] 分配内存失败，错误码: %d"), GetLastError());
+		return FALSE;
+	}
+
+	AddLog(_T("[快速建筑] 内存分配成功: 0x%08X"), m_dwFastBuildAllocated);
+	m_bFastBuildMemoryAllocated = TRUE;
+	return TRUE;
+}
+
+// 写入自定义代码
+BOOL CRedAlertTrainerDlg::WriteCustomCodeForFastBuild()
+{
+	if (!m_bFastBuildMemoryAllocated)
+		return FALSE;
+
+	// 计算返回地址：原地址 + 5 (原始指令5字节)
+	DWORD_PTR returnAddress = m_dwFastBuildAddress + 5;
+
+	// 计算JMP位置和偏移
+	DWORD_PTR jmpPosition = m_dwFastBuildAllocated + sizeof(FAST_BUILD_NEW_CODE);
+	DWORD jmpOffset = (DWORD)(returnAddress - (jmpPosition + 4));
+
+	const size_t codeSize = sizeof(FAST_BUILD_NEW_CODE) + 4;
+	BYTE* fullCode = new BYTE[codeSize];
+
+	memcpy(fullCode, FAST_BUILD_NEW_CODE, sizeof(FAST_BUILD_NEW_CODE));
+
+	// 设置JMP偏移
+	size_t jmpPos = sizeof(FAST_BUILD_NEW_CODE) - 1;
+	fullCode[jmpPos] = 0xE9;
+	fullCode[sizeof(FAST_BUILD_NEW_CODE)] = (BYTE)(jmpOffset & 0xFF);
+	fullCode[sizeof(FAST_BUILD_NEW_CODE) + 1] = (BYTE)((jmpOffset >> 8) & 0xFF);
+	fullCode[sizeof(FAST_BUILD_NEW_CODE) + 2] = (BYTE)((jmpOffset >> 16) & 0xFF);
+	fullCode[sizeof(FAST_BUILD_NEW_CODE) + 3] = (BYTE)((jmpOffset >> 24) & 0xFF);
+
+	AddLog(_T("[快速建筑] 分配地址: 0x%08X"), m_dwFastBuildAllocated);
+	AddLog(_T("[快速建筑] 目标地址: 0x%08X"), m_dwFastBuildAddress);
+	AddLog(_T("[快速建筑] 返回地址: 0x%08X (原地址+5)"), returnAddress);
+	AddLog(_T("[快速建筑] JMP位置: 0x%08X"), jmpPosition);
+	AddLog(_T("[快速建筑] JMP偏移: 0x%08X"), jmpOffset);
+
+	SIZE_T bytesWritten = 0;
+	BOOL bResult = WriteProcessMemory(m_hProcess, (LPVOID)m_dwFastBuildAllocated,
+		fullCode, codeSize, &bytesWritten);
+
+	if (bResult && bytesWritten == codeSize)
+	{
+		CString strCode;
+		for (size_t i = 0; i < codeSize; i++)
+		{
+			strCode.AppendFormat(_T("%02X "), fullCode[i]);
+		}
+		AddLog(_T("[快速建筑] 写入代码: %s"), strCode);
+		AddLog(_T("[快速建筑] 自定义代码写入成功"));
+	}
+	else
+	{
+		AddLog(_T("[快速建筑] 写入失败，错误码: %d"), GetLastError());
+	}
+
+	delete[] fullCode;
+	return (bResult && bytesWritten == codeSize);
+}
+
+// 安装Hook
+BOOL CRedAlertTrainerDlg::InstallHookForFastBuild()
+{
+	AddLog(_T("[快速建筑] 正在安装Hook..."));
+
+	// 原始指令5字节，JMP指令5字节，长度正好对齐，不需要NOP
+	DWORD jmpOffset = (DWORD)(m_dwFastBuildAllocated - (m_dwFastBuildAddress + 5));
+
+	// 5字节JMP指令
+	BYTE jmpInstruction[5] = { 0xE9 };
+	jmpInstruction[1] = (BYTE)(jmpOffset & 0xFF);
+	jmpInstruction[2] = (BYTE)((jmpOffset >> 8) & 0xFF);
+	jmpInstruction[3] = (BYTE)((jmpOffset >> 16) & 0xFF);
+	jmpInstruction[4] = (BYTE)((jmpOffset >> 24) & 0xFF);
+
+	AddLog(_T("[快速建筑] JMP从 0x%08X 到 0x%08X"),
+		m_dwFastBuildAddress, m_dwFastBuildAllocated);
+	AddLog(_T("[快速建筑] JMP偏移: 0x%08X"), jmpOffset);
+	AddLog(_T("[快速建筑] JMP指令: %02X %02X %02X %02X %02X"),
+		jmpInstruction[0], jmpInstruction[1], jmpInstruction[2],
+		jmpInstruction[3], jmpInstruction[4]);
+
+	DWORD dwOldProtect = 0;
+	VirtualProtectEx(m_hProcess, (LPVOID)m_dwFastBuildAddress, 5,
+		PAGE_EXECUTE_READWRITE, &dwOldProtect);
+
+	SIZE_T bytesWritten = 0;
+	BOOL bResult = WriteProcessMemory(m_hProcess, (LPVOID)m_dwFastBuildAddress,
+		jmpInstruction, 5, &bytesWritten);
+
+	VirtualProtectEx(m_hProcess, (LPVOID)m_dwFastBuildAddress, 5, dwOldProtect, &dwOldProtect);
+
+	if (bResult && bytesWritten == 5)
+	{
+		AddLog(_T("[快速建筑] Hook安装成功！"));
+		return TRUE;
+	}
+	else
+	{
+		AddLog(_T("[快速建筑] Hook安装失败，错误码: %d"), GetLastError());
+		return FALSE;
+	}
+}
+
+// 释放内存
+void CRedAlertTrainerDlg::FreeFastBuildMemory()
+{
+	if (m_bFastBuildMemoryAllocated && m_dwFastBuildAllocated)
+	{
+		VirtualFreeEx(m_hProcess, (LPVOID)m_dwFastBuildAllocated, 0, MEM_RELEASE);
+		AddLog(_T("[快速建筑] 内存已释放"));
+		m_bFastBuildMemoryAllocated = FALSE;
+		m_dwFastBuildAllocated = 0;
+	}
+}
+
+// 启用快速建筑
+void CRedAlertTrainerDlg::EnableFastBuild()
+{
+	if (!m_hProcess || !m_bAttached)
+	{
+		AddLog(_T("[快速建筑] 错误: 未附加进程"));
+		return;
+	}
+
+	if (m_bFastBuildEnabled)
+	{
+		AddLog(_T("[快速建筑] 已经启用"));
+		return;
+	}
+
+	AddLog(_T("[快速建筑] 正在启用..."));
+
+	// 获取目标地址
+	if (m_dwFastBuildAddress == 0)
+	{
+		DWORD_PTR dwModuleBase = GetModuleBaseAddress();
+		if (dwModuleBase)
+		{
+			m_dwFastBuildAddress = dwModuleBase + FAST_BUILD_OFFSET;
+			AddLog(_T("[快速建筑] 目标地址: 0x%08X"), m_dwFastBuildAddress);
+		}
+		else
+		{
+			AddLog(_T("[快速建筑] 无法获取模块基址"));
+			return;
+		}
+	}
+
+	// 读取当前字节码
+	BYTE currentBytes[5] = { 0 };
+	SIZE_T bytesRead = 0;
+	if (ReadProcessMemory(m_hProcess, (LPCVOID)m_dwFastBuildAddress, currentBytes, 5, &bytesRead))
+	{
+		AddLog(_T("[快速建筑] 当前字节码: %02X %02X %02X %02X %02X"),
+			currentBytes[0], currentBytes[1], currentBytes[2],
+			currentBytes[3], currentBytes[4]);
+	}
+
+	// 1. 分配内存
+	if (!AllocateMemoryForFastBuild())
+		return;
+
+	// 2. 写入自定义代码
+	if (!WriteCustomCodeForFastBuild())
+	{
+		FreeFastBuildMemory();
+		return;
+	}
+
+	// 3. 安装Hook
+	if (!InstallHookForFastBuild())
+	{
+		FreeFastBuildMemory();
+		return;
+	}
+
+	m_bFastBuildEnabled = TRUE;
+	AddLog(_T("[快速建筑] 成功启用！建筑速度大幅提升"));
+}
+
+// 禁用快速建筑
+void CRedAlertTrainerDlg::DisableFastBuild()
+{
+	if (!m_hProcess || !m_bAttached)
+	{
+		AddLog(_T("[快速建筑] 错误: 未附加进程"));
+		return;
+	}
+
+	if (!m_bFastBuildEnabled)
+	{
+		AddLog(_T("[快速建筑] 已经禁用"));
+		return;
+	}
+
+	AddLog(_T("[快速建筑] 正在禁用..."));
+
+	if (m_dwFastBuildAddress == 0)
+	{
+		DWORD_PTR dwModuleBase = GetModuleBaseAddress();
+		if (dwModuleBase)
+			m_dwFastBuildAddress = dwModuleBase + FAST_BUILD_OFFSET;
+	}
+
+	// 恢复原始字节码 (5字节)
+	DWORD dwOldProtect = 0;
+	VirtualProtectEx(m_hProcess, (LPVOID)m_dwFastBuildAddress, sizeof(FAST_BUILD_ORIGINAL_BYTES),
+		PAGE_EXECUTE_READWRITE, &dwOldProtect);
+
+	SIZE_T bytesWritten = 0;
+	BOOL bResult = WriteProcessMemory(m_hProcess, (LPVOID)m_dwFastBuildAddress,
+		FAST_BUILD_ORIGINAL_BYTES, sizeof(FAST_BUILD_ORIGINAL_BYTES), &bytesWritten);
+
+	VirtualProtectEx(m_hProcess, (LPVOID)m_dwFastBuildAddress, sizeof(FAST_BUILD_ORIGINAL_BYTES),
+		dwOldProtect, &dwOldProtect);
+
+	if (bResult && bytesWritten == sizeof(FAST_BUILD_ORIGINAL_BYTES))
+	{
+		AddLog(_T("[快速建筑] 成功禁用！恢复正常建筑速度"));
+		m_bFastBuildEnabled = FALSE;
+		FreeFastBuildMemory();
+	}
+	else
+	{
+		AddLog(_T("[快速建筑] 恢复失败，错误码: %d"), GetLastError());
+	}
+}
+
+// CheckBox点击响应
+void CRedAlertTrainerDlg::OnBnClickedCheckFastBuild()
+{
+	int nCheck = m_checkFastBuild.GetCheck();
+
+	if (!m_bAttached || !m_hProcess)
+	{
+		AddLog(_T("[快速建筑] 错误: 请先附加进程"));
+		m_checkFastBuild.SetCheck(m_bFastBuildEnabled ? BST_CHECKED : BST_UNCHECKED);
+		return;
+	}
+
+	if (nCheck == BST_CHECKED)
+	{
+		EnableFastBuild();
+	}
+	else
+	{
+		DisableFastBuild();
+	}
+}
+
+// 原始字节码 (20字节)
+// je game.exe+9BDE6
+// mov al,[ebp+0000117D]
+// test al,al
+// je game.exe+9BDE6
+const BYTE FREE_BUILD_ORIGINAL_BYTES[] = {
+	0x0F, 0x84, 0xC4, 0x01, 0x00, 0x00,  // je game.exe+9BDE6
+	0x8A, 0x85, 0x7D, 0x11, 0x00, 0x00,  // mov al, [ebp+0000117D]
+	0x84, 0xC0,                          // test al, al
+	0x0F, 0x84, 0xB6, 0x01, 0x00, 0x00   // je game.exe+9BDE6
+};
+
+// 自定义代码: nop; mov al,[ebp+0000117D]; test al,al; nop (20字节)
+// 将条件跳转替换为nop，实现随意建筑
+const BYTE FREE_BUILD_NEW_CODE[] = {
+	0x90, 0x90, 0x90, 0x90, 0x90, 0x90,  // 6个nop (替换第一个je)
+	0x8A, 0x85, 0x7D, 0x11, 0x00, 0x00,  // mov al, [ebp+0000117D]
+	0x84, 0xC0,                          // test al, al
+	0x90, 0x90, 0x90, 0x90, 0x90, 0x90,  // 6个nop (替换第二个je)
+	0xE9                                 // jmp返回
+};
+
+// ==================== 随意建筑功能 ====================
+
+// 分配内存
+BOOL CRedAlertTrainerDlg::AllocateMemoryForFreeBuild()
+{
+	if (m_bFreeBuildMemoryAllocated && m_dwFreeBuildAllocated)
+	{
+		return TRUE;
+	}
+
+	AddLog(_T("[随意建筑] 正在分配内存..."));
+
+	m_dwFreeBuildAllocated = (DWORD_PTR)VirtualAllocEx(
+		m_hProcess,
+		NULL,
+		2048,
+		MEM_COMMIT | MEM_RESERVE,
+		PAGE_EXECUTE_READWRITE
+	);
+
+	if (!m_dwFreeBuildAllocated)
+	{
+		AddLog(_T("[随意建筑] 分配内存失败，错误码: %d"), GetLastError());
+		return FALSE;
+	}
+
+	AddLog(_T("[随意建筑] 内存分配成功: 0x%08X"), m_dwFreeBuildAllocated);
+	m_bFreeBuildMemoryAllocated = TRUE;
+	return TRUE;
+}
+
+// 写入自定义代码
+BOOL CRedAlertTrainerDlg::WriteCustomCodeForFreeBuild()
+{
+	if (!m_bFreeBuildMemoryAllocated)
+		return FALSE;
+
+	// 计算返回地址：原地址 + 20 (原始指令20字节)
+	DWORD_PTR returnAddress = m_dwFreeBuildAddress + 20;
+
+	// 计算JMP位置和偏移
+	DWORD_PTR jmpPosition = m_dwFreeBuildAllocated + sizeof(FREE_BUILD_NEW_CODE);
+	DWORD jmpOffset = (DWORD)(returnAddress - (jmpPosition + 4));
+
+	const size_t codeSize = sizeof(FREE_BUILD_NEW_CODE) + 4;
+	BYTE* fullCode = new BYTE[codeSize];
+
+	memcpy(fullCode, FREE_BUILD_NEW_CODE, sizeof(FREE_BUILD_NEW_CODE));
+
+	// 设置JMP偏移
+	size_t jmpPos = sizeof(FREE_BUILD_NEW_CODE) - 1;
+	fullCode[jmpPos] = 0xE9;
+	fullCode[sizeof(FREE_BUILD_NEW_CODE)] = (BYTE)(jmpOffset & 0xFF);
+	fullCode[sizeof(FREE_BUILD_NEW_CODE) + 1] = (BYTE)((jmpOffset >> 8) & 0xFF);
+	fullCode[sizeof(FREE_BUILD_NEW_CODE) + 2] = (BYTE)((jmpOffset >> 16) & 0xFF);
+	fullCode[sizeof(FREE_BUILD_NEW_CODE) + 3] = (BYTE)((jmpOffset >> 24) & 0xFF);
+
+	AddLog(_T("[随意建筑] 分配地址: 0x%08X"), m_dwFreeBuildAllocated);
+	AddLog(_T("[随意建筑] 目标地址: 0x%08X"), m_dwFreeBuildAddress);
+	AddLog(_T("[随意建筑] 返回地址: 0x%08X (原地址+20)"), returnAddress);
+	AddLog(_T("[随意建筑] JMP位置: 0x%08X"), jmpPosition);
+	AddLog(_T("[随意建筑] JMP偏移: 0x%08X"), jmpOffset);
+
+	SIZE_T bytesWritten = 0;
+	BOOL bResult = WriteProcessMemory(m_hProcess, (LPVOID)m_dwFreeBuildAllocated,
+		fullCode, codeSize, &bytesWritten);
+
+	if (bResult && bytesWritten == codeSize)
+	{
+		CString strCode;
+		for (size_t i = 0; i < codeSize; i++)
+		{
+			strCode.AppendFormat(_T("%02X "), fullCode[i]);
+		}
+		AddLog(_T("[随意建筑] 写入代码: %s"), strCode);
+		AddLog(_T("[随意建筑] 自定义代码写入成功"));
+	}
+	else
+	{
+		AddLog(_T("[随意建筑] 写入失败，错误码: %d"), GetLastError());
+	}
+
+	delete[] fullCode;
+	return (bResult && bytesWritten == codeSize);
+}
+
+// 安装Hook
+BOOL CRedAlertTrainerDlg::InstallHookForFreeBuild()
+{
+	AddLog(_T("[随意建筑] 正在安装Hook..."));
+
+	// 原始指令20字节，JMP指令5字节，需要15个NOP填充保持20字节
+	DWORD jmpOffset = (DWORD)(m_dwFreeBuildAllocated - (m_dwFreeBuildAddress + 5));
+
+	// 20字节指令: JMP(5字节) + NOP(15字节)
+	BYTE jmpInstruction[20] = { 0xE9 };
+	jmpInstruction[1] = (BYTE)(jmpOffset & 0xFF);
+	jmpInstruction[2] = (BYTE)((jmpOffset >> 8) & 0xFF);
+	jmpInstruction[3] = (BYTE)((jmpOffset >> 16) & 0xFF);
+	jmpInstruction[4] = (BYTE)((jmpOffset >> 24) & 0xFF);
+
+	// 填充NOP
+	for (int i = 5; i < 20; i++)
+	{
+		jmpInstruction[i] = 0x90;
+	}
+
+	AddLog(_T("[随意建筑] JMP从 0x%08X 到 0x%08X"),
+		m_dwFreeBuildAddress, m_dwFreeBuildAllocated);
+	AddLog(_T("[随意建筑] JMP偏移: 0x%08X"), jmpOffset);
+	AddLog(_T("[随意建筑] JMP指令: %02X %02X %02X %02X %02X + 15个NOP"),
+		jmpInstruction[0], jmpInstruction[1], jmpInstruction[2],
+		jmpInstruction[3], jmpInstruction[4]);
+
+	DWORD dwOldProtect = 0;
+	VirtualProtectEx(m_hProcess, (LPVOID)m_dwFreeBuildAddress, 20,
+		PAGE_EXECUTE_READWRITE, &dwOldProtect);
+
+	SIZE_T bytesWritten = 0;
+	BOOL bResult = WriteProcessMemory(m_hProcess, (LPVOID)m_dwFreeBuildAddress,
+		jmpInstruction, 20, &bytesWritten);
+
+	VirtualProtectEx(m_hProcess, (LPVOID)m_dwFreeBuildAddress, 20, dwOldProtect, &dwOldProtect);
+
+	if (bResult && bytesWritten == 20)
+	{
+		AddLog(_T("[随意建筑] Hook安装成功！"));
+		return TRUE;
+	}
+	else
+	{
+		AddLog(_T("[随意建筑] Hook安装失败，错误码: %d"), GetLastError());
+		return FALSE;
+	}
+}
+
+// 释放内存
+void CRedAlertTrainerDlg::FreeFreeBuildMemory()
+{
+	if (m_bFreeBuildMemoryAllocated && m_dwFreeBuildAllocated)
+	{
+		VirtualFreeEx(m_hProcess, (LPVOID)m_dwFreeBuildAllocated, 0, MEM_RELEASE);
+		AddLog(_T("[随意建筑] 内存已释放"));
+		m_bFreeBuildMemoryAllocated = FALSE;
+		m_dwFreeBuildAllocated = 0;
+	}
+}
+
+// 启用随意建筑
+void CRedAlertTrainerDlg::EnableFreeBuild()
+{
+	if (!m_hProcess || !m_bAttached)
+	{
+		AddLog(_T("[随意建筑] 错误: 未附加进程"));
+		return;
+	}
+
+	if (m_bFreeBuildEnabled)
+	{
+		AddLog(_T("[随意建筑] 已经启用"));
+		return;
+	}
+
+	AddLog(_T("[随意建筑] 正在启用..."));
+
+	// 获取目标地址
+	if (m_dwFreeBuildAddress == 0)
+	{
+		DWORD_PTR dwModuleBase = GetModuleBaseAddress();
+		if (dwModuleBase)
+		{
+			m_dwFreeBuildAddress = dwModuleBase + FREE_BUILD_OFFSET;
+			AddLog(_T("[随意建筑] 目标地址: 0x%08X"), m_dwFreeBuildAddress);
+		}
+		else
+		{
+			AddLog(_T("[随意建筑] 无法获取模块基址"));
+			return;
+		}
+	}
+
+	// 读取当前字节码
+	BYTE currentBytes[20] = { 0 };
+	SIZE_T bytesRead = 0;
+	if (ReadProcessMemory(m_hProcess, (LPCVOID)m_dwFreeBuildAddress, currentBytes, 20, &bytesRead))
+	{
+		CString strCode;
+		for (int i = 0; i < 20; i++)
+		{
+			strCode.AppendFormat(_T("%02X "), currentBytes[i]);
+			if ((i + 1) % 16 == 0) strCode.AppendFormat(_T("\n        "));
+		}
+		AddLog(_T("[随意建筑] 当前字节码:\n        %s"), strCode);
+	}
+
+	// 1. 分配内存
+	if (!AllocateMemoryForFreeBuild())
+		return;
+
+	// 2. 写入自定义代码
+	if (!WriteCustomCodeForFreeBuild())
+	{
+		FreeFreeBuildMemory();
+		return;
+	}
+
+	// 3. 安装Hook
+	if (!InstallHookForFreeBuild())
+	{
+		FreeFreeBuildMemory();
+		return;
+	}
+
+	m_bFreeBuildEnabled = TRUE;
+	AddLog(_T("[随意建筑] 成功启用！可以随意建筑"));
+}
+
+// 禁用随意建筑
+void CRedAlertTrainerDlg::DisableFreeBuild()
+{
+	if (!m_hProcess || !m_bAttached)
+	{
+		AddLog(_T("[随意建筑] 错误: 未附加进程"));
+		return;
+	}
+
+	if (!m_bFreeBuildEnabled)
+	{
+		AddLog(_T("[随意建筑] 已经禁用"));
+		return;
+	}
+
+	AddLog(_T("[随意建筑] 正在禁用..."));
+
+	if (m_dwFreeBuildAddress == 0)
+	{
+		DWORD_PTR dwModuleBase = GetModuleBaseAddress();
+		if (dwModuleBase)
+			m_dwFreeBuildAddress = dwModuleBase + FREE_BUILD_OFFSET;
+	}
+
+	// 恢复原始字节码 (20字节)
+	DWORD dwOldProtect = 0;
+	VirtualProtectEx(m_hProcess, (LPVOID)m_dwFreeBuildAddress, sizeof(FREE_BUILD_ORIGINAL_BYTES),
+		PAGE_EXECUTE_READWRITE, &dwOldProtect);
+
+	SIZE_T bytesWritten = 0;
+	BOOL bResult = WriteProcessMemory(m_hProcess, (LPVOID)m_dwFreeBuildAddress,
+		FREE_BUILD_ORIGINAL_BYTES, sizeof(FREE_BUILD_ORIGINAL_BYTES), &bytesWritten);
+
+	VirtualProtectEx(m_hProcess, (LPVOID)m_dwFreeBuildAddress, sizeof(FREE_BUILD_ORIGINAL_BYTES),
+		dwOldProtect, &dwOldProtect);
+
+	if (bResult && bytesWritten == sizeof(FREE_BUILD_ORIGINAL_BYTES))
+	{
+		AddLog(_T("[随意建筑] 成功禁用！恢复正常建筑限制"));
+		m_bFreeBuildEnabled = FALSE;
+		FreeFreeBuildMemory();
+	}
+	else
+	{
+		AddLog(_T("[随意建筑] 恢复失败，错误码: %d"), GetLastError());
+	}
+}
+
+// CheckBox点击响应
+void CRedAlertTrainerDlg::OnBnClickedCheckFreeBuild()
+{
+	int nCheck = m_checkFreeBuild.GetCheck();
+
+	if (!m_bAttached || !m_hProcess)
+	{
+		AddLog(_T("[随意建筑] 错误: 请先附加进程"));
+		m_checkFreeBuild.SetCheck(m_bFreeBuildEnabled ? BST_CHECKED : BST_UNCHECKED);
+		return;
+	}
+
+	if (nCheck == BST_CHECKED)
+	{
+		EnableFreeBuild();
+	}
+	else
+	{
+		DisableFreeBuild();
+	}
+}

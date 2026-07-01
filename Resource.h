@@ -17,13 +17,16 @@
 #define IDC_CurrentElectricity          1005
 #define IDC_CurrentPayload              1006
 #define IDC_CHECK1                      1008
+#define IDC_NoMoneyConsume              1008
 #define IDC_CHECK2                      1009
+#define IDC_NoPowerConsume              1009
 #define IDC_CHECK3                      1010
 #define IDC_LIST_PROCESS                1010
+#define IDC_FastBuild                   1010
 #define IDC_CHECK4                      1011
 #define IDC_BTN_SELECT                  1011
+#define IDC_FreeBuild                   1011
 #define IDC_BTN_CANCEL                  1012
-#define IDC_LIST1                       1013
 #define IDC_ListLog                     1013
 
 // Next default values for new objects
