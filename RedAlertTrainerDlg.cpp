@@ -246,11 +246,6 @@ void CRedAlertTrainerDlg::OnTimer(UINT_PTR nIDEvent)
 		{
 			ShowBackgroundPicture(defaultPath);
 		}
-
-		if (m_bAttached)
-		{
-			ReadBaseValue();
-		}
 	}
 
 	CDialogEx::OnTimer(nIDEvent);
